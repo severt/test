@@ -132,8 +132,8 @@ class Eo
 		if (!$strict && !$access) {
 			$hlForms = self::getHL(self::HL_FORMS);
 			$hlOrgs = self::getHL(self::HL_ORGS);
-			$arForms = self::getHlData($hlForms['CLASS']);
-			$arORgs = self::getHlData($hlOrgs['CLASS']);
+			$arForms = self::getHlData($hlForms['CLASS'], [], ['UF_NAME' => 'ASC']);
+			$arORgs = self::getHlData($hlOrgs['CLASS'], [], ['UF_NAME' => 'ASC']);
 			$arUserForms = array_column($arForms, 'UF_APPROVERS');
 			foreach($arUserForms as $ar) {
 				$users = array_merge($users, (array)$ar);
@@ -199,8 +199,8 @@ class Eo
 		$arParams['FORM_ID'] = $formId;
 		$arParams['ORG_ID'] = $orgId;
 		$pType = $arParams['FORM']['UF']['UF_PERIOD_TYPE'];
-		$arForms = Eo::getHlData($arParams['FORM']['HL']['CLASS']);
-		$arORgs = Eo::getHlData($arParams['ORGS']['HL']['CLASS']);
+		$arForms = Eo::getHlData($arParams['FORM']['HL']['CLASS'], [], ['UF_NAME' => 'ASC']);
+		$arORgs = Eo::getHlData($arParams['ORGS']['HL']['CLASS'], [], ['UF_NAME' => 'ASC']);
 		$orgIDs = array_keys($arParams['FORM']['UF']['UF_ORG']['items']);
 		$org = $arORgs[array_search($orgId, $orgIDs)]['UF_NAME'];
 		
@@ -310,8 +310,7 @@ class Eo
 		}
 
 		$orgIDs = array_keys($arParams['FORM']['UF']['UF_ORG']['items']);
-		$orgNames = array_values($arParams['FORM']['UF']['UF_ORG']['items']);
-		$orgKeys = array_column($arORgs, 'ID');
+		$orgNames = array_values($arParams['FORM']['UF']['UF_ORG']['items']);	
 
 		foreach ($arPeriod as $i => $period)
 		{
@@ -320,12 +319,8 @@ class Eo
 
 			foreach ($form['UF_ORG'] as $org)
 			{
-				$indK = array_search($org, $orgKeys);
-				$arEmail = $arOrgs[$indK]['UF_EMAIL'];
-				$arEmailFrom = $arOrgs[$indK]['UF_EMAIL_FROM'];
-				//$orgKey = $orgKeys[$indK];
-				$orgName = $org;
-				
+				$orgIndex = array_search($org, $orgIDs);
+				$orgName = $arORgs[$orgIndex]['UF_NAME'];
 				if ($arParams['ORG_ID'] != '' && $arParams['ORG_ID'] != $org) continue; // Пропускаем все организации, если на входе указана организация
 
 				if (is_array($uids) && count($uids)) {
@@ -335,7 +330,7 @@ class Eo
 					$form['UF_NEED_TO_APPROVE'] = 0;
 				}
 				else {
-					$approvers = array_merge((array)$arORgs[array_search($org, $orgIDs)]['UF_CURATOR'], (array)$form['UF_APPROVERS']);
+					$approvers = array_merge((array)$arORgs[$orgIndex]['UF_CURATOR'], (array)$form['UF_APPROVERS']);
 					$approvers = array_unique($approvers);
 				}
 				$el = [];
@@ -353,10 +348,6 @@ class Eo
 					$arFile['MODULE_ID'] = 'gpi.eo';
 					$arFile['name'] = $name . '.' . $fileExt;
 				}
-				
-				//foreach($arOrgs as $elItem){
-				//    $arEmail[] = $arItem[]
-				//}
 
 				$el = [
 					'TITLE' => $name,
@@ -373,8 +364,8 @@ class Eo
 					$prefix . 'ORG' => $orgName,
 					$prefix . 'FILE_MASK' => $name, // Маска файла без расширения для проверки соответствия
 					$prefix . 'TEMPLATE' => $arFile,
-					$prefix . 'ORG_EMAIL' => $arEmail, //$arORgs[array_search($org, $orgIDs)]['UF_EMAIL'],
-					$prefix . 'EMAIL_FROM' => $arEmailFrom,
+					$prefix . 'ORG_EMAIL' => $arORgs[$orgIndex]['UF_EMAIL'],
+					$prefix . 'EMAIL_FROM' => $arORgs[$orgIndex]['UF_EMAIL_FROM'],
 					$prefix . 'NEED_TO_APPROVE' => $form['UF_NEED_TO_APPROVE'],
 					$prefix . 'HAVE_TEMPLATE' => $form['HAVE_TEMPLATE'],
 				];
@@ -398,7 +389,6 @@ class Eo
 
 				if ($debug) {
 					file_put_contents($_SERVER['DOCUMENT_ROOT'] . '/upload/eo_debug_create.log', print_r($el, true) . PHP_EOL, FILE_APPEND);
-					file_put_contents($_SERVER['DOCUMENT_ROOT'] . '/upload/eo_debug_create2.log', print_r($arORgs, true) . PHP_EOL, FILE_APPEND);
 				}
 
 				if (!$existFlag && !$debug)
