@@ -1,21 +1,15 @@
-curl -v 'https://kp-gp-app1-prd.codm.gazprom.loc/local/components/r7/viewwer/ajax.php?type=download&ID=58'
-*   Trying 10.56.144.150:443...
-* Connected to kp-gp-app1-prd.codm.gazprom.loc (10.56.144.150) port 443 (#0)
-* ALPN: offers h2
-* ALPN: offers http/1.1
-*  CAfile: /etc/pki/tls/certs/ca-bundle.crt
-*  CApath: none
-* TLSv1.3 (OUT), TLS handshake, Client hello (1):
-* TLSv1.3 (IN), TLS handshake, Server hello (2):
-* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
-* TLSv1.3 (IN), TLS handshake, Certificate (11):
-* TLSv1.3 (OUT), TLS alert, unknown CA (560):
-* SSL certificate problem: self signed certificate in certificate chain
-* Closing connection 0
-curl: (60) SSL certificate problem: self signed certificate in certificate chain
-More details here: https://curl.se/docs/sslcerts.html
-
-curl failed to verify the legitimacy of the server and therefore could not
-establish a secure connection to it. To learn more about this situation and
-how to fix it, please visit the web page mentioned above.
-[root@kp-gp-arr1-prd sites-enabled]#
+[2025-12-18T15:42:40.925] [INFO] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - Start Task
+[2025-12-18T15:42:41.212] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - downloadFile complete filesize=111922
+[2025-12-18T15:42:41.639] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - stdout:
+[2025-12-18T15:42:41.639] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - stderr:
+[2025-12-18T15:42:41.639] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - ExitCode (code=0;signal=null;error:0)
+[2025-12-18T15:42:41.654] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - processUploadToStorage complete
+[2025-12-18T15:42:41.654] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - output (data={"ctx":{"logger":{"category":"nodeJS","context":{"TENANT":"localhost","DOCID":"75d49632494b065da3170325f0
+12a3f2","USERID":"5518"},"callStackSkipIndex":0},"tenant":"localhost","docId":"75d49632494b065da3170325f012a3f2","userId":"5518"},"cmd":{"withAuthorization":true,"c":"open","id":"75d49632494b065da3170325f012a3f2","u
+serid":"5518","format":"docx","url":"https://kp-gp-app1-prd.codm.gazprom.loc/local/components/r7/viewer/ajax.php?type=download&ID=1082569","title":"2019.08.01 ТЗ Внедрение Битрикс.docx","outputformat":8192,"outputpa
+th":"Editor.bin","embeddedfonts":false,"status_info":0,"lcid":9,"nobase64":true,"convertToOrigin":".pdf.xps.oxps.djvu"}})
+[2025-12-18T15:42:41.655] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - postProcess
+[2025-12-18T15:42:41.658] [DEBUG] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - deleteFolderRecursive
+[2025-12-18T15:42:41.658] [INFO] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - End Task
+[2025-12-18T15:42:41.663] [INFO] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - ackTask addResponse
+[2025-12-18T15:42:41.663] [INFO] [localhost] [75d49632494b065da3170325f012a3f2] [5518] nodeJS - ackTask ack
