@@ -1,32 +1,64 @@
-[2025-12-19T10:21:50.683] [INFO] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - Start Task
-[2025-12-19T10:21:50.711] [ERROR] [null] [null] [null] nodeJS - (node:648706) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests
- insecure by disabling certificate verification.
-(Use `converter --trace-warnings ...` to show where the warning was created)
-[2025-12-19T10:21:50.714] [ERROR] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - error downloadFile:url=https://kp-iod-app-prd.codm.gazprom.loc/local/components/r7/viewer/ajax.php?
-type=download&ID=334;attempt=1;code:UNABLE_TO_VERIFY_LEAF_SIGNATURE;connect:undefined Error: unable to verify the first certificate
-    at TLSSocket.onConnectSecure (_tls_wrap.js:1515:34)
-    at TLSSocket.emit (events.js:400:28)
-    at TLSSocket._finishInit (_tls_wrap.js:937:8)
-    at TLSWrap.ssl.onhandshakedone (_tls_wrap.js:709:12)
-[2025-12-19T10:21:51.721] [ERROR] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - error downloadFile:url=https://kp-iod-app-prd.codm.gazprom.loc/local/components/r7/viewer/ajax.php?
-type=download&ID=334;attempt=2;code:UNABLE_TO_VERIFY_LEAF_SIGNATURE;connect:undefined Error: unable to verify the first certificate
-    at TLSSocket.onConnectSecure (_tls_wrap.js:1515:34)
-    at TLSSocket.emit (events.js:400:28)
-    at TLSSocket._finishInit (_tls_wrap.js:937:8)
-    at TLSWrap.ssl.onhandshakedone (_tls_wrap.js:709:12)
-[2025-12-19T10:21:52.726] [ERROR] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - error downloadFile:url=https://kp-iod-app-prd.codm.gazprom.loc/local/components/r7/viewer/ajax.php?
-type=download&ID=334;attempt=3;code:UNABLE_TO_VERIFY_LEAF_SIGNATURE;connect:undefined Error: unable to verify the first certificate
-    at TLSSocket.onConnectSecure (_tls_wrap.js:1515:34)
-    at TLSSocket.emit (events.js:400:28)
-    at TLSSocket._finishInit (_tls_wrap.js:937:8)
-    at TLSWrap.ssl.onhandshakedone (_tls_wrap.js:709:12)
-[2025-12-19T10:21:53.728] [DEBUG] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - ExitCode (code=0;signal=null;error:-81)
-[2025-12-19T10:21:53.729] [DEBUG] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - output (data={"ctx":{"logger":{"category":"nodeJS","context":{"TENANT":"localhost","DOCID":"f3eae6f
-4a023241929e0c28bca6f2ffa","USERID":"5518"},"callStackSkipIndex":0},"tenant":"localhost","docId":"f3eae6f4a023241929e0c28bca6f2ffa","userId":"5518"},"cmd":{"withAuthorization":true,"c":"open","id"
-:"f3eae6f4a023241929e0c28bca6f2ffa","userid":"5518","format":"docx","url":"https://kp-iod-app-prd.codm.gazprom.loc/local/components/r7/viewer/ajax.php?type=download&ID=334","title":"TEST77.docx","
-outputformat":8192,"outputpath":"Editor.bin","embeddedfonts":false,"status_info":-81,"lcid":25,"nobase64":true,"convertToOrigin":".pdf.xps.oxps.djvu"}})
-[2025-12-19T10:21:53.729] [DEBUG] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - postProcess
-[2025-12-19T10:21:53.730] [DEBUG] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - deleteFolderRecursive
-[2025-12-19T10:21:53.730] [INFO] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - End Task
-[2025-12-19T10:21:53.732] [INFO] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - ackTask addResponse
-[2025-12-19T10:21:53.733] [INFO] [localhost] [f3eae6f4a023241929e0c28bca6f2ffa] [5518] nodeJS - ackTask ack
+<?php
+// probe.php (app1)
+header('Content-Type: text/plain; charset=utf-8');
+
+$url = 'https://app2.example.local/nettest/ping.txt'; // поменяйте на ваш app2 URL
+
+$ch = curl_init($url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 10,
+
+    // ВАЖНО: лучше оставить проверку сертификата включенной.
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2,
+
+    // Если у app2 сертификат от внутреннего CA — добавьте CURLOPT_CAINFO.
+    // CURLOPT_CAINFO => '/etc/pki/ca-trust/source/anchors/internal-ca.pem',
+]);
+
+$body = curl_exec($ch);
+$err  = curl_error($ch);
+$code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+curl_close($ch);
+
+if ($body === false) {
+    http_response_code(502);
+    echo "curl error: $err\n";
+    exit;
+}
+if ($code < 200 || $code >= 300) {
+    http_response_code(502);
+    echo "upstream http code: $code\n";
+    echo $body;
+    exit;
+}
+
+echo $body;
+
+
+--------------
+ <!doctype html>
+<meta charset="utf-8" />
+<button id="btn">Проверить app1→app2 по 443</button>
+<pre id="out">Нажмите кнопку…</pre>
+
+<script>
+const out = document.getElementById('out');
+
+document.getElementById('btn').addEventListener('click', async () => {
+  out.textContent = 'Запрос...';
+  try {
+    const r = await fetch('/probe.php', { cache: 'no-store' });
+    const t = await r.text(); // чтение тела ответа как текста [web:1]
+    out.textContent = `HTTP ${r.status}\n\n` + t;
+  } catch (e) {
+    out.textContent = 'Ошибка сети/доступа: ' + e;
+  }
+});
+</script>
+----------------
+
+ 
