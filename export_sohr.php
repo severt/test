@@ -1,4 +1,8 @@
 <?php
+/*
+Cannot assign PhpOffice\PhpSpreadsheet\Worksheet\Worksheet to property HighloadBlockExporter::$worksheet of type PhpOffice\PhpSpreadsheet\Worksheet 
+*/
+
 /**
  * Скрипт выборки данных из highload блока с экспортом в XLSX
  * Используется Bitrix D7 API и PhpSpreadsheet для пошагового экспорта
