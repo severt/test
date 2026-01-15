@@ -1,8 +1,4 @@
 <?php
-/*
-Cannot assign PhpOffice\PhpSpreadsheet\Worksheet\Worksheet to property HighloadBlockExporter::$worksheet of type PhpOffice\PhpSpreadsheet\Worksheet 
-*/
-
 /**
  * Скрипт выборки данных из highload блока с экспортом в XLSX
  * Используется Bitrix D7 API и PhpSpreadsheet для пошагового экспорта
@@ -29,7 +25,7 @@ if (empty($_SERVER["DOCUMENT_ROOT"])) {
         $_SERVER["DOCUMENT_ROOT"] = $dir;
     } else {
         // Если не нашли, указываем жестко (раскомментируйте и укажите свой путь, если скрипт падает)
-        // $_SERVER["DOCUMENT_ROOT"] = '/home/bitrix/www';
+        $_SERVER["DOCUMENT_ROOT"] = '/var/www/dev2/html';
         die("Ошибка: Не удалось определить DOCUMENT_ROOT. Запустите скрипт из папки сайта или укажите путь вручную.");
     }
 }
@@ -48,18 +44,12 @@ require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_be
 // ============================================================================
 // 3. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ И ПРОСТРАНСТВ ИМЕН
 // ============================================================================
-use Bitrix\Main\Loader;
-use Bitrix\Main\Entity\DataManager;
-use Bitrix\Highload\HighloadBlockTable; // Пространство имен объявляем здесь
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
-// ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА МОДУЛЯ HIGHLOADBLOCK
-// Это должно происходить ДО любого использования классов этого модуля
-if (!Loader::includeModule('highloadblock')) {
-    echo "ОШИБКА: Модуль Highload Blocks не установлен или не загружен.\n";
-    die();
-}
+use \Bitrix\Main\Loader;
+use \Bitrix\Main\Entity\DataManager;
+use \Bitrix\Highload\HighloadBlockTable; // Пространство имен объявляем здесь
+use \PhpOffice\PhpSpreadsheet\Spreadsheet;
+use \PhpOffice\PhpSpreadsheet\Worksheet;
+use \PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 // ============================================================================
 // КОНФИГУРАЦИОННЫЕ ПАРАМЕТРЫ (настраиваются в начале скрипта)
@@ -142,9 +132,9 @@ class HighloadBlockExporter
     private string $filenameFormat;
     private int $batchSize;
     private ExportLogger $logger;
-    private DataManager $entity;
-    private Spreadsheet $spreadsheet;
-    private Worksheet $worksheet;
+    private $entity;
+    private $spreadsheet;
+    private $worksheet;
     private int $currentRow = 1;
     private array $headers = [];
     private int $totalRecords = 0;
@@ -203,6 +193,11 @@ class HighloadBlockExporter
     {
         if (isset($this->entity)) {
             return $this->entity;
+        }
+
+        if (!Loader::includeModule('highloadblock')) {
+            echo "ОШИБКА: Модуль Highload Blocks не установлен или не загружен.\n";
+            die();
         }
 
         // Получение информации о highload блоке
