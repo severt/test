@@ -17,7 +17,7 @@ if (empty($_SERVER["DOCUMENT_ROOT"])) {
         $_SERVER["DOCUMENT_ROOT"] = $dir;
     } else {
         // ФОЛЛБЭК: Если не нашли, попробуйте раскомментировать и указать путь вручную
-        // $_SERVER["DOCUMENT_ROOT"] = '/home/bitrix/www';
+        $_SERVER["DOCUMENT_ROOT"] = '/var/www/dev2/html';
         die("Критическая ошибка: Не удалось найти корневую директорию сайта (DOCUMENT_ROOT).");
     }
 }
@@ -35,33 +35,31 @@ require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_be
 // ============================================================================
 // 3. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ И ИМПОРТ КЛАССОВ
 // ============================================================================
-use Bitrix\Main\Loader;
-use Bitrix\Main\Entity\DataManager;
-use Bitrix\Highload\HighloadBlockTable;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use \Bitrix\Main\Loader;
+use \Bitrix\Main\Entity\DataManager;
+use \Bitrix\Highload\HighloadBlockTable;
+use \PhpOffice\PhpSpreadsheet\Spreadsheet;
+use \PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-// ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА МОДУЛЯ HIGHLOADBLOCK
-if (!Loader::includeModule('highloadblock')) {
-    die("Критическая ошибка: Модуль Highload Blocks (highloadblock) не установлен.");
-}
+CModule::IncludeModule('iblock');
+CModule::IncludeModule('highloadblock');
 
 // ============================================================================
 // 4. КОНФИГУРАЦИОННЫЕ ПАРАМЕТРЫ
 // ============================================================================
 
 // Код highload блока
-const HIGHLOAD_BLOCK_CODE = 'Sohr';
+const HIGHLOAD_BLOCK_CODE = 'SohrList';
 
 // Параметры фильтра (поле => значение)
 const FILTER_PARAMS = [
-    'UF_SLEMAIL' => '@adm.local.ru',
+    'UF_SLEMAIL' => '@adm.gazprom.ru',
     'UF_SLUDDOSTUP' => 't',
     'UF_SLVID' => 'ноутбук',
 ];
 
 // Путь для сохранения XLSX файла (относительно корня сайта)
-const EXPORT_DIR = '/upload/adm_sohr/';
+const EXPORT_DIR = '/upload/exphb/';
 
 // Формат имени файла (используется для генерации имени)
 const EXPORT_FILENAME_FORMAT = 'Y-m-d_H-i.xlsx';
@@ -183,11 +181,6 @@ class HighloadBlockExporter
     {
         if (isset($this->entity)) {
             return $this->entity;
-        }
-
-        // Повторная проверка загрузки модуля (на всякий случай)
-        if (!Loader::includeModule('highloadblock')) {
-            throw new Exception("Модуль highloadblock не загружен");
         }
 
         // Получение информации о highload блоке
