@@ -3,56 +3,51 @@
  * Скрипт выборки данных из highload блока с экспортом в XLSX
  * Используется Bitrix D7 API и PhpSpreadsheet для пошагового экспорта
  */
-// ============================================================================
-// ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА
-// ============================================================================
-// Предотвращение ограничения времени выполнения
-set_time_limit(0);
-ini_set('max_execution_time', 0);
 
 // ============================================================================
-// 1. ОПРЕДЕЛЕНИЕ КОРНЯ САЙТА (Для работы через CRON/Console)
+// 1. АВТОМАТИЧЕСКОЕ ОПРЕДЕЛЕНИЕ КОРНЯ САЙТА (ДЛЯ CRON/CONSOLE)
 // ============================================================================
-// Если скрипт лежит в корне сайта или в папке /local/, /admin/
-// Мы пытаемся найти DOCUMENT_ROOT автоматически
 if (empty($_SERVER["DOCUMENT_ROOT"])) {
-    // Ищем папку bitrix, поднимаясь вверх по директориям
     $dir = __DIR__;
+    // Ищем папку bitrix вверх по иерархии
     while ($dir != '/' && !file_exists($dir . '/bitrix')) {
         $dir = dirname($dir);
     }
     if (file_exists($dir . '/bitrix')) {
         $_SERVER["DOCUMENT_ROOT"] = $dir;
     } else {
-        // Если не нашли, указываем жестко (раскомментируйте и укажите свой путь, если скрипт падает)
-        $_SERVER["DOCUMENT_ROOT"] = '/var/www/dev2/html';
-        die("Ошибка: Не удалось определить DOCUMENT_ROOT. Запустите скрипт из папки сайта или укажите путь вручную.");
+        // ФОЛЛБЭК: Если не нашли, попробуйте раскомментировать и указать путь вручную
+        // $_SERVER["DOCUMENT_ROOT"] = '/home/bitrix/www';
+        die("Критическая ошибка: Не удалось найти корневую директорию сайта (DOCUMENT_ROOT).");
     }
 }
 
 // ============================================================================
-// 2. ПОДКЛЮЧЕНИЕ ЯДРА БИТРИКС
+// 2. ПОДКЛЮЧЕНИЕ ЯДРА BITRIX (PROLOG_BEFORE)
 // ============================================================================
 define("NO_KEEP_STATISTIC", true);
 define("NOT_CHECK_PERMISSIONS", true);
 define('BX_WITH_ON_AFTER_EPILOG', true);
 define('BX_NO_ACCELERATOR_RESET', true);
 
-// Подключаем пролог (используем prolog_before, чтобы не грузить HTML админки)
 require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_before.php");
 
 // ============================================================================
-// 3. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ И ПРОСТРАНСТВ ИМЕН
+// 3. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ И ИМПОРТ КЛАССОВ
 // ============================================================================
-use \Bitrix\Main\Loader;
-use \Bitrix\Main\Entity\DataManager;
-use \Bitrix\Highload\HighloadBlockTable; // Пространство имен объявляем здесь
-use \PhpOffice\PhpSpreadsheet\Spreadsheet;
-use \PhpOffice\PhpSpreadsheet\Worksheet;
-use \PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Bitrix\Main\Loader;
+use Bitrix\Main\Entity\DataManager;
+use Bitrix\Highload\HighloadBlockTable;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+// ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА МОДУЛЯ HIGHLOADBLOCK
+if (!Loader::includeModule('highloadblock')) {
+    die("Критическая ошибка: Модуль Highload Blocks (highloadblock) не установлен.");
+}
 
 // ============================================================================
-// КОНФИГУРАЦИОННЫЕ ПАРАМЕТРЫ (настраиваются в начале скрипта)
+// 4. КОНФИГУРАЦИОННЫЕ ПАРАМЕТРЫ
 // ============================================================================
 
 // Код highload блока
@@ -78,6 +73,14 @@ const BATCH_SIZE = 100;
 const MAX_EXECUTION_TIME = 3600; // 1 час
 
 // ============================================================================
+// 5. НАСТРОЙКА ОКРУЖЕНИЯ
+// ============================================================================
+
+// Предотвращение ограничения времени выполнения
+set_time_limit(0);
+ini_set('max_execution_time', 0);
+
+// ============================================================================
 // КЛАСС ЛОГИРОВАНИЯ
 // ============================================================================
 
@@ -90,34 +93,24 @@ class ExportLogger
         $this->logFile = $_SERVER['DOCUMENT_ROOT'] . $exportDir . 'export.log';
     }
 
-    /**
-     * Логирование сообщения с временем
-     * @param string $message Сообщение для логирования
-     * @param string $level Уровень логирования (INFO, WARNING, ERROR)
-     */
     public function log(string $message, string $level = 'INFO'): void
     {
         $timestamp = date('Y-m-d H:i:s');
         $logMessage = "[{$timestamp}] [{$level}] {$message}" . PHP_EOL;
         
+        // Пишем в файл
         error_log($logMessage, 3, $this->logFile);
-        echo $logMessage; // Вывод в консоль
+        
+        // Дублируем в вывод (консоль или браузер)
+        echo $logMessage;
+        if (php_sapi_name() !== 'cli') {
+            echo "<br>";
+        }
     }
 
-    public function logInfo(string $message): void
-    {
-        $this->log($message, 'INFO');
-    }
-
-    public function logWarning(string $message): void
-    {
-        $this->log($message, 'WARNING');
-    }
-
-    public function logError(string $message): void
-    {
-        $this->log($message, 'ERROR');
-    }
+    public function logInfo(string $message): void { $this->log($message, 'INFO'); }
+    public function logWarning(string $message): void { $this->log($message, 'WARNING'); }
+    public function logError(string $message): void { $this->log($message, 'ERROR'); }
 }
 
 // ============================================================================
@@ -132,9 +125,12 @@ class HighloadBlockExporter
     private string $filenameFormat;
     private int $batchSize;
     private ExportLogger $logger;
+    
+    // Свойства без строгой типизации для избежания конфликтов namespace
     private $entity;
     private $spreadsheet;
     private $worksheet;
+    
     private int $currentRow = 1;
     private array $headers = [];
     private int $totalRecords = 0;
@@ -171,9 +167,6 @@ class HighloadBlockExporter
         $this->logger->logInfo("Инициализация экспортера для блока '{$this->blockCode}'");
     }
 
-    /**
-     * Создание директории для экспорта если не существует
-     */
     private function prepareExportDirectory(): void
     {
         $dir = $_SERVER['DOCUMENT_ROOT'] . $this->exportDir;
@@ -186,18 +179,15 @@ class HighloadBlockExporter
         }
     }
 
-    /**
-     * Получение сущности highload блока
-     */
-    private function getHighloadBlockEntity(): DataManager
+    private function getHighloadBlockEntity()
     {
         if (isset($this->entity)) {
             return $this->entity;
         }
 
+        // Повторная проверка загрузки модуля (на всякий случай)
         if (!Loader::includeModule('highloadblock')) {
-            echo "ОШИБКА: Модуль Highload Blocks не установлен или не загружен.\n";
-            die();
+            throw new Exception("Модуль highloadblock не загружен");
         }
 
         // Получение информации о highload блоке
@@ -212,23 +202,16 @@ class HighloadBlockExporter
             throw new Exception("Highload блок '{$this->blockCode}' не найден");
         }
 
-        // Получение класса сущности
-        $entityClass = '\\Bitrix\\Highload\\' . $block['NAME'] . 'Table';
-        
-        if (!class_exists($entityClass)) {
-            // Динамическое получение класса таблицы
-            $entityClass = HighloadBlockTable::compileEntity($block)->getDataClass();
-        }
+        // Компиляция сущности (Самый надежный метод)
+        $entity = HighloadBlockTable::compileEntity($block);
+        $this->entity = $entity->getDataClass();
+        $entityClass = $this->entity;
 
-        $this->logger->logInfo("Используется сущность: {$entityClass}");
+        $this->logger->logInfo("Используется класс сущности: {$entityClass}");
         
-        $this->entity = $entityClass;
         return $this->entity;
     }
 
-    /**
-     * Подсчет общего количества записей с применением фильтра
-     */
     private function countTotalRecords(): int
     {
         $entity = $this->getHighloadBlockEntity();
@@ -245,64 +228,49 @@ class HighloadBlockExporter
         return $this->totalRecords;
     }
 
-    /**
-     * Построение фильтра для запроса
-     */
     private function buildFilter(): array
     {
         $filter = [];
-
         foreach ($this->filterParams as $field => $value) {
-            // Для полей, содержащих текст, используется фильтр LIKE
             if (strpos($value, '@') !== false || strlen($value) > 0) {
-                $filter["{$field}"] = $value;
+                $filter[$field] = $value;
             }
         }
-
         $this->logger->logInfo('Применен фильтр: ' . json_encode($filter, JSON_UNESCAPED_UNICODE));
-
         return $filter;
     }
 
-    /**
-     * Инициализация заголовков листа
-     */
     private function initializeHeaders(): void
     {
         $entity = $this->getHighloadBlockEntity();
         
-        // Получение всех полей (primary key + user fields)
-        $result = $entity::getList([
-            'limit' => 1,
-        ]);
-
+        $result = $entity::getList(['limit' => 1]);
         $row = $result->fetch();
 
         if ($row) {
             $this->headers = array_keys($row);
             
-            // Запись заголовков в первую строку
             $col = 1;
             foreach ($this->headers as $header) {
                 $this->worksheet->setCellValueByColumnAndRow($col, $this->currentRow, $header);
                 $col++;
             }
 
-            // Стилизация заголовков (полужирный текст)
+            // Стилизация заголовков
             $range = '1:1';
-            $this->worksheet->getStyle($range)->getFont()->setBold(true);
-            $this->worksheet->getStyle($range)->getFill()->setFillType('solid');
-            $this->worksheet->getStyle($range)->getFill()->getStartColor()->setRGB('CCCCCC');
+            try {
+                $this->worksheet->getStyle($range)->getFont()->setBold(true);
+                $this->worksheet->getStyle($range)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                $this->worksheet->getStyle($range)->getFill()->getStartColor()->setRGB('CCCCCC');
+            } catch (\Exception $e) {
+                // Игнорируем ошибки стилизации, если библиотека старая
+            }
 
             $this->currentRow++;
-
             $this->logger->logInfo('Инициализированы заголовки: ' . implode(', ', $this->headers));
         }
     }
 
-    /**
-     * Выборка данных партией
-     */
     private function fetchBatch(int $offset): array
     {
         $entity = $this->getHighloadBlockEntity();
@@ -323,18 +291,13 @@ class HighloadBlockExporter
         return $batch;
     }
 
-    /**
-     * Запись партии данных в лист
-     */
     private function writeBatch(array $batch): void
     {
         foreach ($batch as $rowData) {
             $col = 1;
-            
             foreach ($this->headers as $header) {
                 $value = $rowData[$header] ?? '';
                 
-                // Преобразование значений для корректного отображения
                 if (is_array($value)) {
                     $value = json_encode($value, JSON_UNESCAPED_UNICODE);
                 } elseif ($value === true) {
@@ -346,44 +309,35 @@ class HighloadBlockExporter
                 $this->worksheet->setCellValueByColumnAndRow($col, $this->currentRow, $value);
                 $col++;
             }
-
             $this->currentRow++;
             $this->processedRecords++;
         }
     }
 
-    /**
-     * Автоматическая подстройка ширины колонок
-     */
     private function autoFitColumns(): void
     {
-        foreach ($this->worksheet->getColumnIterator() as $column) {
-            $this->worksheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+        try {
+            foreach ($this->worksheet->getColumnIterator() as $column) {
+                $this->worksheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+            $this->logger->logInfo('Подстроена ширина колонок');
+        } catch (\Exception $e) {
+            // Игнорируем ошибки
         }
-
-        $this->logger->logInfo('Подстроена ширина колонок');
     }
 
-    /**
-     * Сохранение файла XLSX
-     */
     private function saveFile(): void
     {
         $writer = new Xlsx($this->spreadsheet);
         $writer->save($this->exportFilePath);
-
         $this->logger->logInfo("Файл сохранен: {$this->exportFilePath}");
     }
 
-    /**
-     * Главный метод экспорта с пошаговой обработкой
-     */
     public function export(): bool
     {
         try {
             $startTime = time();
 
-            // Подсчет общего количества записей
             $this->countTotalRecords();
 
             if ($this->totalRecords === 0) {
@@ -391,81 +345,58 @@ class HighloadBlockExporter
                 return false;
             }
 
-            // Инициализация заголовков
             $this->initializeHeaders();
 
-            // Пошаговая обработка партий данных
             $offset = 0;
             $batchNumber = 0;
 
             while ($offset < $this->totalRecords) {
                 $batchNumber++;
-
                 $this->logger->logInfo("Обработка партии {$batchNumber} (смещение: {$offset})");
 
-                // Получение партии данных
                 $batch = $this->fetchBatch($offset);
 
                 if (empty($batch)) {
                     break;
                 }
 
-                // Запись партии в лист
                 $this->writeBatch($batch);
 
                 $percentage = round(($this->processedRecords / $this->totalRecords) * 100, 2);
-                $this->logger->logInfo(
-                    "Обработано: {$this->processedRecords}/{$this->totalRecords} ({$percentage}%)"
-                );
+                $this->logger->logInfo("Обработано: {$this->processedRecords}/{$this->totalRecords} ({$percentage}%)");
 
-                // Проверка лимита времени выполнения
                 $elapsedTime = time() - $startTime;
                 if ($elapsedTime > MAX_EXECUTION_TIME) {
-                    $this->logger->logWarning(
-                        "Превышено максимальное время выполнения: {$elapsedTime} сек"
-                    );
+                    $this->logger->logWarning("Превышено максимальное время выполнения: {$elapsedTime} сек");
                     break;
                 }
 
                 $offset += $this->batchSize;
-
-                // Небольшая пауза между партиями для снижения нагрузки
-                usleep(100000); // 0.1 секунды
+                usleep(100000); 
             }
 
-            // Подстройка ширины колонок перед сохранением
             $this->autoFitColumns();
-
-            // Сохранение файла
             $this->saveFile();
 
-            $this->logger->logInfo(
-                "Экспорт завершен успешно. " .
-                "Обработано записей: {$this->processedRecords}/{$this->totalRecords}"
-            );
-
+            $this->logger->logInfo("Экспорт завершен успешно. Обработано записей: {$this->processedRecords}/{$this->totalRecords}");
             return true;
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->logError("Ошибка при экспорте: " . $e->getMessage());
+            $this->logger->logError("Trace: " . $e->getTraceAsString());
             return false;
         }
     }
 }
 
 // ============================================================================
-// ОСНОВНОЙ КОД ВЫПОЛНЕНИЯ
+// ЗАПУСК
 // ============================================================================
 
 try {
-    // Создание логгера
     $logger = new ExportLogger(EXPORT_DIR);
     $logger->logInfo('=== НАЧАЛО ЭКСПОРТА ДАННЫХ ===');
-    $logger->logInfo("Блок: " . HIGHLOAD_BLOCK_CODE);
-    $logger->logInfo("Размер партии: " . BATCH_SIZE);
-    $logger->logInfo("Максимальное время: " . MAX_EXECUTION_TIME . " сек");
 
-    // Создание и запуск экспортера
     $exporter = new HighloadBlockExporter(
         HIGHLOAD_BLOCK_CODE,
         FILTER_PARAMS,
@@ -475,24 +406,16 @@ try {
         $logger
     );
 
-    // Запуск экспорта
     if ($exporter->export()) {
-        $logger->logInfo('=== ЭКСПОРТ УСПЕШНО ЗАВЕРШЕН ===');
-        echo "✓ Экспорт завершен успешно\\n";
+        echo "SUCCESS";
     } else {
-        $logger->logError('=== ЭКСПОРТ ЗАВЕРШЕН С ОШИБКАМИ ===');
-        echo "✗ Экспорт завершен с ошибками\\n";
+        echo "ERROR";
     }
 
-} catch (Exception $e) {
-    echo "Критическая ошибка: " . $e->getMessage() . "\\n";
-    file_put_contents(
-        $_SERVER['DOCUMENT_ROOT'] . EXPORT_DIR . 'critical_error.log',
-        date('Y-m-d H:i:s') . " | " . $e->getMessage() . PHP_EOL,
-        FILE_APPEND
-    );
+} catch (\Throwable $e) {
+    echo "CRITICAL ERROR: " . $e->getMessage();
+    if (defined('EXPORT_DIR')) {
+        file_put_contents($_SERVER['DOCUMENT_ROOT'] . EXPORT_DIR . 'critical_error.log', (string)$e);
+    }
 }
-
-// Отключение пролога (если требуется)
-// require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php');
 ?>
