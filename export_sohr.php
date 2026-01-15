@@ -3,6 +3,59 @@
  * Скрипт выборки данных из highload блока с экспортом в XLSX
  * Используется Bitrix D7 API и PhpSpreadsheet для пошагового экспорта
  */
+// ============================================================================
+// ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА
+// ============================================================================
+// Предотвращение ограничения времени выполнения
+set_time_limit(0);
+ini_set('max_execution_time', 0);
+
+// ============================================================================
+// 1. ОПРЕДЕЛЕНИЕ КОРНЯ САЙТА (Для работы через CRON/Console)
+// ============================================================================
+// Если скрипт лежит в корне сайта или в папке /local/, /admin/
+// Мы пытаемся найти DOCUMENT_ROOT автоматически
+if (empty($_SERVER["DOCUMENT_ROOT"])) {
+    // Ищем папку bitrix, поднимаясь вверх по директориям
+    $dir = __DIR__;
+    while ($dir != '/' && !file_exists($dir . '/bitrix')) {
+        $dir = dirname($dir);
+    }
+    if (file_exists($dir . '/bitrix')) {
+        $_SERVER["DOCUMENT_ROOT"] = $dir;
+    } else {
+        // Если не нашли, указываем жестко (раскомментируйте и укажите свой путь, если скрипт падает)
+        // $_SERVER["DOCUMENT_ROOT"] = '/home/bitrix/www';
+        die("Ошибка: Не удалось определить DOCUMENT_ROOT. Запустите скрипт из папки сайта или укажите путь вручную.");
+    }
+}
+
+// ============================================================================
+// 2. ПОДКЛЮЧЕНИЕ ЯДРА БИТРИКС
+// ============================================================================
+define("NO_KEEP_STATISTIC", true);
+define("NOT_CHECK_PERMISSIONS", true);
+define('BX_WITH_ON_AFTER_EPILOG', true);
+define('BX_NO_ACCELERATOR_RESET', true);
+
+// Подключаем пролог (используем prolog_before, чтобы не грузить HTML админки)
+require_once($_SERVER["DOCUMENT_ROOT"] . "/bitrix/modules/main/include/prolog_before.php");
+
+// ============================================================================
+// 3. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ И ПРОСТРАНСТВ ИМЕН
+// ============================================================================
+use Bitrix\Main\Loader;
+use Bitrix\Main\Entity\DataManager;
+use Bitrix\Highload\HighloadBlockTable; // Пространство имен объявляем здесь
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+// ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА МОДУЛЯ HIGHLOADBLOCK
+// Это должно происходить ДО любого использования классов этого модуля
+if (!Loader::includeModule('highloadblock')) {
+    echo "ОШИБКА: Модуль Highload Blocks не установлен или не загружен.\n";
+    die();
+}
 
 // ============================================================================
 // КОНФИГУРАЦИОННЫЕ ПАРАМЕТРЫ (настраиваются в начале скрипта)
@@ -29,24 +82,6 @@ const BATCH_SIZE = 100;
 
 // Максимальное время выполнения скрипта (в секундах)
 const MAX_EXECUTION_TIME = 3600; // 1 час
-
-// ============================================================================
-// ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА
-// ============================================================================
-
-// Предотвращение ограничения времени выполнения
-set_time_limit(0);
-ini_set('max_execution_time', 0);
-
-// Подключение необходимых модулей Bitrix
-require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin.php');
-
-use Bitrix\\Main\\Entity\\DataManager;
-use Bitrix\\Main\\ORM\\Query\\Query;
-use Bitrix\\Highload\\HighloadBlockTable;
-use PhpOffice\\PhpSpreadsheet\\Spreadsheet;
-use PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx;
-use PhpOffice\\PhpSpreadsheet\\Worksheet\\Worksheet;
 
 // ============================================================================
 // КЛАСС ЛОГИРОВАНИЯ
