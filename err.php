@@ -1,3 +1,9 @@
+SAVE_URL='https://kp-gp-r72-prd.codm.gazprom.loc/cache/files/data/.../output.docx?...'
+curl -L -v -o /tmp/r7_test.docx -w '\nhttp=%{http_code} size=%{size_download}\n' "$SAVE_URL"
+ls -l /tmp/r7_test.docx
+file /tmp/r7_test.docx
+
+
 с сервера kp-gp-app1-prd
 
 curl -I -v "https://kp-gp-r72-prd.codm.gazprom.loc/healthcheck"
