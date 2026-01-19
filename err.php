@@ -1,7 +1,5 @@
-SAVE_URL='https://kp-gp-r72-prd.codm.gazprom.loc/cache/files/data/.../output.docx?...'
-curl -L -v -o /tmp/r7_test.docx -w '\nhttp=%{http_code} size=%{size_download}\n' "$SAVE_URL"
-ls -l /tmp/r7_test.docx
-file /tmp/r7_test.docx
+curl -v -o /tmp/test.docx "https://kp-gp-r72-prd.codm.gazprom.loc/cache/files/data/df944e613be128a901072063b01de97d_9406/output.docx/output.docx?md5=gU3_-15-cBQBUw6DazNAWQ&expires=1768820431&filename=output.docx"
+
 
 
 
