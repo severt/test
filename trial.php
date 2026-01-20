@@ -1,4 +1,21 @@
 <?php
+require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
+
+use Bitrix\Main\Application;
+use Bitrix\Main\Config\Option;
+
+// Получение информации о лицензии
+$licenseKey = Option::get('main', '~license_key', '');
+echo "Лицензионный ключ: " . $licenseKey . "\n";
+
+// Проверка даты окончания (если доступна)
+echo "Дата окончания лицензии доступна через личный кабинет 1С-Битрикс";
+?>
+
+
+
+
+<?php
 	$basePath = $_SERVER['DOCUMENT_ROOT'] . '/bitrix/';
 	$settingsPath = $basePath . '.settings.php';
 	$definePath = $basePath . 'modules/main/admin/define.php';
