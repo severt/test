@@ -1,12 +1,13 @@
-[root@bus-gp-ap1a-prd postfix]# echo "test" | sudo mail -s "Subj" -r "s.sivakov@inform.gazprom.ru" s.sivakov.inform.gazpro                                                                                                 m.ru
-[root@bus-gp-ap1a-prd postfix]# tail -f /var/log/maillog
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/relay/smtp[3644455]: warning: c1p1-exch.gazprom.loc[10.56.80.67]:465 offered no su                                                                                                 pported AUTH mechanisms: 'GSSAPI NTLM'
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/relay/smtp[3644455]: 1DD91C0474: to=<s.sivakov.inform.gazprom.ru@gazprom.loc>, ori                                                                                                 g_to=<s.sivakov.inform.gazprom.ru>, relay=c1p1-exch.gazprom.loc[10.56.80.67]:465, delay=0.1, delays=0.04/0/0.05/0, dsn=5.7                                                                                                 .1, status=bounced (host c1p1-exch.gazprom.loc[10.56.80.67] said: 550 5.7.1 Client does not have permissions to send as th                                                                                                 is sender (in reply to end of DATA command))
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/cleanup[3644461]: 3194EC0483: message-id=<20260123110030.3194EC0483@bus-gp-ap1a-pr                                                                                                 d.codm.gazprom.loc>
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/bounce[3644459]: 1DD91C0474: sender non-delivery notification: 3194EC0483
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/qmgr[3644453]: 3194EC0483: from=<>, size=2832, nrcpt=1 (queue active)
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/qmgr[3644453]: 1DD91C0474: removed
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/relay/smtp[3644457]: SMTPS wrappermode (TCP port 465) requires setting "smtp_tls_w                                                                                                 rappermode = yes", and "smtp_tls_security_level = encrypt" (or stronger)
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/relay/smtp[3644457]: warning: c1p1-exch.gazprom.loc[10.56.80.67]:465 offered no su                                                                                                 pported AUTH mechanisms: 'GSSAPI NTLM'
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/relay/smtp[3644457]: 3194EC0483: to=<s.sivakov@inform.gazprom.ru>, relay=c1p1-exch                                                                                                 .gazprom.loc[10.56.80.67]:465, delay=0.05, delays=0/0/0.04/0.01, dsn=5.7.1, status=bounced (host c1p1-exch.gazprom.loc[10.                                                                                                 56.80.67] said: 550 5.7.1 Client does not have permissions to send as this sender (in reply to end of DATA command))
-Jan 23 14:00:30 bus-gp-ap1a-prd postfix/qmgr[3644453]: 3194EC0483: removed
+<?php
+$to = 's.sivakov@inform.gazprom.ru';
+$subject = 'PHP Test Exchange Relay';
+$message = 'Тест отправки через Exchange с правильным отправителем.';
+$headers = 'From: ius.loc' . "\r\n" .
+           'Reply-To: ius.loc' . "\r\n";
+
+if (mail($to, $subject, $message, $headers)) {
+    echo "✓ PHP Mail отправлено успешно!\n";
+} else {
+    echo "✗ PHP Mail ошибка!\n";
+}
+?>
